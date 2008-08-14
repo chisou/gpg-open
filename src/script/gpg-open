@@ -1,0 +1,372 @@
+#!/usr/bin/python
+#coding=UTF8
+
+import gettext
+from optparse import OptionParser
+import os
+import shutil
+import sys
+import subprocess
+import tempfile
+import time
+
+
+gettext.bindtextdomain( 'gpg-open', '/path/to/my/language/directory' )
+gettext.textdomain( 'gpg-open' )
+_ = gettext.gettext
+
+
+class ProcessError ( Exception ):
+   def __init__ ( self, exitcode ):
+      self.__exitcode = exitcode
+   def get_exitcode ( self ):
+      return self.__exitcode
+   exitcode = property( get_exitcode )
+
+class Error ( Exception ):
+   InvalidArmoredFile = _("Error: No Armored File (File: %s)")
+   InvalidUserId = _("Error: No User ID")
+   NoInputFile = _("Error: No Inputfile")
+   NoAssignee = _("Error: No Addressee")
+   NoUsername = _("Error: No Username")
+   UndefinedUserId = _("Error: Undefined User ID")
+   RuntimeException = _("Error: Unexpected Exception")
+
+   def __init__ ( self, message ):
+      self.__message = message
+
+   def get_message ( self ):
+      return self.__message
+
+   message = property( get_message )
+   
+class Cancellation ( Exception ):
+   pass
+
+class Dialog:
+   MultipleUsersTitle = _("Dialog: Multiple Users Title")
+   MultipleUsersText = _("Dialog: Multiple Users Text")
+   MultipleUsersColumnTitle = _("Dialog: Multiple Users Column Title")
+   AuthenticationTitle = _("Dialog: Authentication Title")
+   AuthenticationText = _("Dialog: Authentication Text")
+   
+class Status:
+   CallingCommand = _("Status: Calling Command (Command: %s)")
+   CommandFailed = _("Status: Command Failed (Exit Code: %s)")
+   MultipleUsers = _("Status: Multiple Users")
+   SelectedUser = _("Status: Selected User (User: %s)")
+   
+   
+   
+   
+
+# ========================================================================
+# ========================================================================
+# ========================================================================
+
+
+# ------------------------------------------------------------------------
+# Print a verbose message to the console.
+# The message is printed only if the global variable 'is_verbose' is
+# set to 'True'.
+
+def print_verbose ( message ):
+   if is_verbose:
+      print message
+
+# ------------------------------------------------------------------------
+# Concatenate array elements to a single string.
+# If no specific separator is defined a single space is used by default.
+
+def concat ( tokens, sep=" " ):
+   if len(tokens) > 1:
+     return tokens[0] + sep + concat( tokens[1:], sep )
+   else:
+     return tokens[0]
+
+# ------------------------------------------------------------------------
+# Call a system command and return its output.
+# The command is defined by its name and command line arguments in a
+# single array. If the command needs additional input it can be provided
+# using the optional 'input' argument. If the command fails (returning
+# an exit code different from '0' both the stdout and stderr output will
+# be printed and a ProcessError will be raised.
+
+def call_command ( arguments, input=None ):
+
+   print_verbose( Status.CallingCommand % concat( arguments ) )
+   # All communication streams will be piped. The 'communicate' method
+   # will wait until the call has finished and return both stdout and
+   # stderr (capturing the first is sufficient because the stderr output
+   # is redirected to stdout). 
+
+   process = subprocess.Popen( arguments, 
+         stdout=subprocess.PIPE, 
+         stderr=subprocess.STDOUT, 
+         stdin=subprocess.PIPE )
+   output = process.communicate( input )[0]
+   
+   # If the call fails all output is printed to the console and a 
+   # ProcessError is raised. The exit code can be interpreted later.
+
+   if process.returncode != 0:
+      print_verbose( Status.CommandFailed % process.returncode )
+      print_verbose( output )
+      raise ProcessError( process.returncode )
+      
+   # The output stream is split into separate lines. The trailing
+   # newlines are stripped to avoid unnecessary spaces.
+      
+   result = []
+   for line in output.splitlines():
+      result.append( line.strip( "\n\r" ) )
+      
+   return result
+
+# ------------------------------------------------------------------------
+# Read the user ID of the encryption addressees.
+# The input file is analysed using the 'gpg' command line utility and
+# parsed to resolve the ID of the encryption addressees. The result will
+# always be an array because multiple possible id are possible (though
+# unlikely). If an addressees secret key is not available he is excluded.
+# If no single user ID can be resolved an Error instance is raised.
+
+def read_userids ( filename ):
+
+   try:
+      output = call_command( [ "gpg", "--status-fd", "1", "--list-only", filename ] )
+   except ProcessError:
+      raise Error( Error.InvalidArmoredFile % filename )
+   
+   # The output of this command will look like this:
+   #    [GNUPG:] ENC_TO <some-id> 1 0
+   # The user ID is located after the 'ENC_TO' token. The ID of all of
+   # these lines are collected in a result array.
+
+   result = [] 
+   for line in output:
+      words = line.split()
+      if words[1] == "ENC_TO":
+         result.append( words[2] )
+
+   # TODO: remove ID if no secret key is available
+   
+   # At least one ID should be found. If not, most likely the file is
+   # not a valid GPG encrypted file.
+ 
+   if len(result) == 0:
+      raise Error( Error.NoAssignee )
+
+   return result
+
+# ------------------------------------------------------------------------
+# Resolve the username of a single user ID.
+# The 'gpg' command line utility is used to read all available keys and
+# additional information for the specified user ID. The username is parsed
+# from its output. If no user information is available (or could not be
+# parsed) an Error instance is raised.
+
+def read_username ( userId ):
+
+   # Open a gpg sub process which show the user information from the
+   # public keyring for a specific user ID. If this command fails the
+   # user ID is not defined at the keyrings
+
+   try:
+      output = call_command( [ "gpg", "--list-keys", userId ] )
+   except ProcessError:
+      raise Error( Error.InvalidUserId % userId )
+ 
+   # The output of this command will look like this:
+   #    uid    Name Surname <mail@address.org>
+   # Because the name may consist of an arbitrary number of parts
+   # just the mail address is cut away to seperate the name.
+
+   for line in output:
+      words = line.split()
+      if len(words)>1 and words[0] == "uid":
+         return concat( words[1:len(words)-1], " " )
+
+   # If no 'uid' line was present, the evaluated user ID is not
+   # defined in the key rings. This MUST NOT happen - the sub proces
+   # should fail instead (see above).
+   
+   raise Error( Error.NoUsername )
+
+# ------------------------------------------------------------------------
+# Read user ID and password.
+# This method will open a dialog box which requests the password for a
+# specific user ID. If multiple ID are possible the user is prompted to
+# choose in advance. Therefore both the ID and the password are returned.
+
+def read_password ( userIds, usernames ):
+
+   # (1) Evaluate ID and name of the designated user. Usually there
+   # should only be a single user possible. If not, a choice dialog
+   # needs to be shown. 
+   
+   if len( userIds ) == 1:
+      username = usernames[0]
+      userId = userIds[0]
+
+   else:
+
+      print_verbose( _("Multiple possible users. Need to choose one of %s.") % usernames )
+
+      # The dialog will a list of two columns where only the second
+      # contains the user names. The model data therefore needs empty
+      # strings mixed into the user names to fill the first column.
+      
+      data = []
+      for username in usernames:
+         data += [ "", username ]
+
+      # Call zenity to show the choice dialog. The model data is
+      # simply attached to the arguments array. Its output will be
+      # the chosen user name.
+
+      command = [ "zenity", "--list", "--radiolist", "--title", Dialog.MultipleUsersTitle, "--text", Dialog.MultipleUsersText, "--column", "", "--column", Dialog.MultipleUsersColumnTitle ]
+      try:
+         username = call_command( command + data )[0]
+      except ProcessError, e:
+         if e.exitcode == 1: # user canceled
+            raise Cancellation
+         raise Error( Error.RuntimeException % "Zenity failed!" ) # FIXME (message)
+         
+      print_verbose( _("Status: Selected User") % username )
+      
+      # As ID and name correspond in the 'userIds' and 'usernames'
+      # arrays the user ID can simply be read from the input array.
+      
+      userId = userIds[ usernames.index( username ) ]
+
+   # (2) Read the password for the designated user.
+   
+   command = [ "zenity", "--entry", "--hide-text", "--title", Dialog.AuthenticationTitle, "--text", Dialog.AuthenticationText ]
+   try:
+      password = call_command( command )[0]
+   except ProcessError, e:
+      if e.exitcode == 1: # user canceled
+         raise CancelException
+      raise Error( Error.RuntimeException % "Zenity failed!" ) # FIXME (message)
+   
+   return userId, password
+
+# ======================================================================== create_tempdir
+def create_tempdir ( directory ):
+   result = tempfile.mkdtemp( dir=directory )
+   print_verbose( _("Created temporary directory %s.") % result )
+   return result
+   
+# ======================================================================== create_tempfile
+def create_tempfile ( directory, file ):
+   EXTENSION = ".gpg"
+   file = os.path.basename( file )
+   if file.endswith( EXTENSION ):
+      file = file[0:len(file)-len(EXTENSION)]
+   result = os.path.join( directory, file )
+   print_verbose( _("Temporary file will be %s.") % result )
+   return result
+
+# ======================================================================== decrypt_file
+def decrypt_file ( input_file, output_file, password ):
+   try:
+      call_command( [ "gpg", "--yes", "--no-tty", "--status-fd", "2", "--attribute-fd", "2", "--passphrase-fd", "0", "-o", output_file, "-d", input_file ], password )
+   except ProcessError:
+      raise Error( Error.RuntimeException % _("Unable to decrypt file!") )
+
+# ======================================================================== open_file
+def open_file ( file ):
+   print_verbose( _("Opening temorary file %s ...") % file )
+   t0 = time.time()
+   process = subprocess.Popen( [ "gnome-open", file ], stderr=subprocess.STDOUT, stdout=subprocess.PIPE )
+   output = process.communicate()[0]
+   t1 = time.time()
+      
+   if process.returncode != 0:
+      print_verbose( _("Sub process exited with error (%s)!") % process.returncode )
+      print_verbose( output )
+      raise Error( Error.RuntimeException % _("Unable to open file!") )
+      
+   if t1-t0 < 345:
+      WARNING = _("Process 'gnome-open' finished very quicklt (%s seconds). Maybe the target application was forked internally?") % str(t1-t0)
+      subprocess.Popen( [ "zenity", "--warning", "--text", WARNING ] )
+
+# ======================================================================== calc_hash
+def calc_hash ( file ):
+   try:
+      sum = call_command( [ "md5sum", file ] )[0]
+      return sum.split()[0]
+   except ProcessError:
+      raise Error( Error.RuntimeException % _("Unable to calculate MD5 hash sum!") )
+
+# ======================================================================== clean_up
+def clean_up ( directory ):
+   print_verbose( _("Removing temporary data ...") )
+   shutil.rmtree( directory )
+
+# ========================================================================
+# ========================================================================
+# ========================================================================
+
+try:
+   
+   is_verbose = True
+
+   # (1) parse command line options
+   # -------------------------------------------------------
+   # <- is_verbose:boolean
+   # <- options:array { len > 0 }
+
+   # There is only one possible option: --verbose, which will enable
+   # verbose logging output. The variable 'is_verbose' is directly set
+   # by the option parser. 
+   
+   option_parser = OptionParser()
+   option_parser.add_option( "-v", "--verbose", action="store_true", dest="is_verbose", default=False )
+   arguments, options = option_parser.parse_args( sys.argv[1:] )
+   
+   # Anyhow, the name of the encrypted file is a mandatory argument. It
+   # is also parsed by the option parser and always the first.
+
+   if len(options) == 0:
+      raise Error( Error.NoInputFile )
+      
+   # (3) GO!
+   # -------------------------------------------------------
+   # -> options:array { len > 0 }
+   
+   input_file = options[0]
+   
+   userIds = read_userids( input_file )
+   usernames = map( read_username, userIds )
+   userId, password = read_password( userIds, usernames )
+   
+   temp_dir = create_tempdir( "/dev/shm" )
+   try:
+      temp_file = create_tempfile( temp_dir, input_file )
+      decrypt_file( input_file, temp_file, password + "\n" )
+   
+      hash_before = calc_hash( temp_file )
+      open( temp_file )
+      hash_after = calc_hash( temp_file )
+   
+      if hash_before != hash_after:
+         print_verbose( _("Temporary file modified. Encrypting ...") ) 
+         encrypt_file( temp_file, input_file )
+      else:
+         print_verbose( _("Temporary file unmodified.") )
+         
+   except Exception, e:
+      print _("Process exited with exception:")
+      print e
+   finally:
+      clean_up( temp_dir )
+ 
+except Cancellation, e:
+   print_verbose( _("User cancellation.") )
+
+except Error, e:
+   pass
+   #error( e.message )
+   
