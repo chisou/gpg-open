@@ -1,0 +1,97 @@
+# Default messages for the gpg-open package.
+# Copyright (C) 2008 Christoph Souris
+# This file is distributed under the same license as the gpg-open package.
+# Christoph Souris <christoph.souris@googlemail.com>, 2008
+
+msgid ""
+msgstr ""
+
+msgid "Error: No Armored File (File: %s)"
+msgstr "Unable to read armored file %s!"
+
+msgid "Error: No User For ID (ID: %s)"
+msgstr "Unable to read username for user ID %s!"
+
+msgid "Error: No Inputfile"
+msgstr "No input file defined!"
+
+msgid "Error: No Assignee"
+msgstr "Unable to read any encryption assignee!`"
+
+msgid "Error: No Username"
+msgstr "Unable to parse valid username from output!"
+
+msgid "Error: Undefined User ID (ID: %s)"
+msgstr "Undefined user ID %s!"
+
+msgid "Error: Unexpected Exception (Exception: %s)"
+msgstr "Runtime Exception: %s"
+
+msgid "Dialog: Multiple Users Title"
+msgstr "Choose User"
+
+msgid "Dialog: Multiple Users Text"
+msgstr "This file is encrypted to multiple users. Please choose the one you want to use for decryption:"
+
+msgid "Dialog: Multiple Users Column Title"
+msgstr "User"
+
+msgid "Dialog: Authentication Title"
+msgstr "Authentication"
+
+msgid "Dialog: Authentication Text (User: %s)"
+msgstr "Please enter password for user %s:"
+
+msgid "Status: Calling Command (Command: %s)"
+msgstr "Opening sub process '%s' ..."
+
+msgid "Status: Command Failed (Exit Code: %s)"
+msgstr "Sub process failed with exit code %s!"
+
+msgid "Status: Multiple Possible Users (Users: %s)"
+msgstr "Multiple possible users. Need to choose one of %s."
+
+msgid "Status: Selected User (User: %s)"
+msgstr "Selected user is %s."
+
+msgid "Status: Created Temporary Directory (Directory: %s)"
+msgstr "Created temporary directory at %s."
+
+msgid "Status: Temporary Filename (Filename: %s)"
+msgstr "Temporary filename is %s."
+
+msgid "Error: Zenity Failure"
+msgstr "Zenity failed!"
+
+msgid "Error: Decryption Failure"
+msgstr "Unable to decrypt file!"
+
+msgid "Status: Opening Temorary File (File: %s)"
+msgstr "Opening temporary file %s ..."
+
+msgid "Status: Opening Process Failure (Exit Code: %s)"
+msgstr "Opening subprocess failed with exit code %s."
+
+msgid "Status: File Opening Failure!"
+msgstr "Unable to open temporary file!"
+
+msgid "Warning: Immediate Subprocess Finish (Seconds: %s)"
+msgstr "Process 'gnome-open' finished very quicklt (%s seconds). Maybe the target application was forked?"
+
+msgid "Status: MD5 Hash Failure"
+msgstr "Unable to calculate MD5 hash sum!"
+
+msgid "Status: Removing Temporary Data"
+msgstr "Removing temporary data ..."
+
+msgid "Status: Temporary File Altered"
+msgstr "Temporary file modified. Encrypting ..."
+
+msgid "Status: Temporary File Unaltered"
+msgstr "Temporary file unmodified."
+
+msgid "Error: Process Failure :"
+msgstr "Process exited with exception:"
+
+msgid "Status: User Cancellation"
+msgstr "User cancellation."
