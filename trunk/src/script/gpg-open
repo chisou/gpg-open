@@ -10,11 +10,16 @@ import subprocess
 import tempfile
 import time
 
+# ------------------------------------------------------------------------
+# L18n
+if gettext.find( "gpg-open" ) == None:
+   print "Warning: Unable to locate localized messages for the current locale!"  
+gettext.install( "gpg-open" )
 
-gettext.bindtextdomain( 'gpg-open', '/path/to/my/language/directory' )
-gettext.textdomain( 'gpg-open' )
-_ = gettext.gettext
 
+# ========================================================================
+#     Classes 
+# ========================================================================
 
 class ProcessError ( Exception ):
    def __init__ ( self, exitcode ):
@@ -25,12 +30,13 @@ class ProcessError ( Exception ):
 
 class Error ( Exception ):
    InvalidArmoredFile = _("Error: No Armored File (File: %s)")
-   InvalidUserId = _("Error: No User ID")
+   InvalidUserId = _("Error: No User For ID (ID: %s)")
    NoInputFile = _("Error: No Inputfile")
-   NoAssignee = _("Error: No Addressee")
+   NoAssignee = _("Error: No Assignee")
    NoUsername = _("Error: No Username")
-   UndefinedUserId = _("Error: Undefined User ID")
-   RuntimeException = _("Error: Unexpected Exception")
+   UndefinedUserId = _("Error: Undefined User ID (ID: %s)")
+   RuntimeException = _("Error: Unexpected Exception (Exception: %s)")
+   
 
    def __init__ ( self, message ):
       self.__message = message
@@ -48,22 +54,32 @@ class Dialog:
    MultipleUsersText = _("Dialog: Multiple Users Text")
    MultipleUsersColumnTitle = _("Dialog: Multiple Users Column Title")
    AuthenticationTitle = _("Dialog: Authentication Title")
-   AuthenticationText = _("Dialog: Authentication Text")
+   AuthenticationText = _("Dialog: Authentication Text (User: %s)")
    
 class Status:
    CallingCommand = _("Status: Calling Command (Command: %s)")
    CommandFailed = _("Status: Command Failed (Exit Code: %s)")
-   MultipleUsers = _("Status: Multiple Users")
+   MultiplePossibleUsers = _("Status: Multiple Possible Users (Users: %s)")
    SelectedUser = _("Status: Selected User (User: %s)")
-   
-   
-   
-   
+   CreatedTemporaryDirectory = _("Status: Created Temporary Directory (Directory: %s)")
+   TemporaryFilename = _("Status: Temporary Filename (Filename: %s)")
+   ZenityFailure = _("Error: Zenity Failure")
+   DecryptionFailure = _("Error: Decryption Failure")
+   OpeningTemporaryFile = _("Status: Opening Temorary File (File: %s)")
+   OpeningProcessFailure = _("Status: Opening Process Failure (Exit Code: %s)")
+   FileOpeningFailure = _("Status: File Opening Failure!")
+   ImmediateSubprocessFinish = _("Warning: Immediate Subprocess Finish (Seconds: %s)")
+   MD5HashFailure = _("Status: MD5 Hash Failure")
+   RemovingTemporaryData = _("Status: Removing Temporary Data")
+   TemporaryFileAltered = _("Status: Temporary File Altered")
+   TemporaryFileUnaltered = _("Status: Temporary File Unaltered")
+   ProcessFailure = _("Error: Process Failure :")
+   UserCancellation = _("Status: User Cancellation")
+
 
 # ========================================================================
+#      Methods
 # ========================================================================
-# ========================================================================
-
 
 # ------------------------------------------------------------------------
 # Print a verbose message to the console.
@@ -211,7 +227,7 @@ def read_password ( userIds, usernames ):
 
    else:
 
-      print_verbose( _("Multiple possible users. Need to choose one of %s.") % usernames )
+      print_verbose( Status.MultiplePossibleUsers % usernames )
 
       # The dialog will a list of two columns where only the second
       # contains the user names. The model data therefore needs empty
@@ -231,9 +247,9 @@ def read_password ( userIds, usernames ):
       except ProcessError, e:
          if e.exitcode == 1: # user canceled
             raise Cancellation
-         raise Error( Error.RuntimeException % "Zenity failed!" ) # FIXME (message)
+         raise Error( Error.RuntimeException % Status.ZenityFailure )
          
-      print_verbose( _("Status: Selected User") % username )
+      print_verbose( Status.SelectedUser % username )
       
       # As ID and name correspond in the 'userIds' and 'usernames'
       # arrays the user ID can simply be read from the input array.
@@ -248,14 +264,14 @@ def read_password ( userIds, usernames ):
    except ProcessError, e:
       if e.exitcode == 1: # user canceled
          raise CancelException
-      raise Error( Error.RuntimeException % "Zenity failed!" ) # FIXME (message)
+      raise Error( Error.RuntimeException % Status.ZenityFailure )
    
    return userId, password
 
 # ======================================================================== create_tempdir
 def create_tempdir ( directory ):
    result = tempfile.mkdtemp( dir=directory )
-   print_verbose( _("Created temporary directory %s.") % result )
+   print_verbose( Status.CreatedTemporaryDirectory % result )
    return result
    
 # ======================================================================== create_tempfile
@@ -265,7 +281,7 @@ def create_tempfile ( directory, file ):
    if file.endswith( EXTENSION ):
       file = file[0:len(file)-len(EXTENSION)]
    result = os.path.join( directory, file )
-   print_verbose( _("Temporary file will be %s.") % result )
+   print_verbose( Status.TemporaryFilename % result )
    return result
 
 # ======================================================================== decrypt_file
@@ -273,24 +289,23 @@ def decrypt_file ( input_file, output_file, password ):
    try:
       call_command( [ "gpg", "--yes", "--no-tty", "--status-fd", "2", "--attribute-fd", "2", "--passphrase-fd", "0", "-o", output_file, "-d", input_file ], password )
    except ProcessError:
-      raise Error( Error.RuntimeException % _("Unable to decrypt file!") )
+      raise Error( Error.RuntimeException % Status.DecryptionFailure )
 
 # ======================================================================== open_file
 def open_file ( file ):
-   print_verbose( _("Opening temorary file %s ...") % file )
+   print_verbose( Status.OpeningTemporaryFile % file )
    t0 = time.time()
    process = subprocess.Popen( [ "gnome-open", file ], stderr=subprocess.STDOUT, stdout=subprocess.PIPE )
    output = process.communicate()[0]
    t1 = time.time()
       
    if process.returncode != 0:
-      print_verbose( _("Sub process exited with error (%s)!") % process.returncode )
+      print_verbose( Status.OpeningProcessFailure % process.returncode )
       print_verbose( output )
-      raise Error( Error.RuntimeException % _("Unable to open file!") )
+      raise Error( Error.RuntimeException % Status.FileOpeningFailure )
       
    if t1-t0 < 345:
-      WARNING = _("Process 'gnome-open' finished very quicklt (%s seconds). Maybe the target application was forked internally?") % str(t1-t0)
-      subprocess.Popen( [ "zenity", "--warning", "--text", WARNING ] )
+      subprocess.Popen( [ "zenity", "--warning", "--text", Status.ImmediateSubprocessFinish  % str(t1-t0) ] )
 
 # ======================================================================== calc_hash
 def calc_hash ( file ):
@@ -298,11 +313,11 @@ def calc_hash ( file ):
       sum = call_command( [ "md5sum", file ] )[0]
       return sum.split()[0]
    except ProcessError:
-      raise Error( Error.RuntimeException % _("Unable to calculate MD5 hash sum!") )
+      raise Error( Error.RuntimeException % Status.MD5HashFailure )
 
 # ======================================================================== clean_up
 def clean_up ( directory ):
-   print_verbose( _("Removing temporary data ...") )
+   print_verbose( Status.RemovingTemporaryData )
    shutil.rmtree( directory )
 
 # ========================================================================
@@ -315,8 +330,8 @@ try:
 
    # (1) parse command line options
    # -------------------------------------------------------
-   # <- is_verbose:boolean
-   # <- options:array { len > 0 }
+   # <- is_verbose:boolean (used by the print_verbose function)
+   # <- options:array { length > 0 }
 
    # There is only one possible option: --verbose, which will enable
    # verbose logging output. The variable 'is_verbose' is directly set
@@ -334,7 +349,7 @@ try:
       
    # (3) GO!
    # -------------------------------------------------------
-   # -> options:array { len > 0 }
+   # -> options:array { length > 0 }
    
    input_file = options[0]
    
@@ -352,21 +367,19 @@ try:
       hash_after = calc_hash( temp_file )
    
       if hash_before != hash_after:
-         print_verbose( _("Temporary file modified. Encrypting ...") ) 
+         print_verbose( Status.TemporaryFileAltered ) 
          encrypt_file( temp_file, input_file )
       else:
-         print_verbose( _("Temporary file unmodified.") )
+         print_verbose( Status.TemporaryFileUnaltered )
          
    except Exception, e:
-      print _("Process exited with exception:")
+      print Status.ProcessFailure
       print e
    finally:
       clean_up( temp_dir )
  
 except Cancellation, e:
-   print_verbose( _("User cancellation.") )
+   print_verbose( Status.UserCancellation )
 
 except Error, e:
-   pass
-   #error( e.message )
-   
+	print_verbose( e.message )
