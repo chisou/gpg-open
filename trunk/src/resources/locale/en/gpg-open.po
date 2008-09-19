@@ -1,10 +1,10 @@
-# Default messages for the gpg-open package.
+# Default (english) messages for the gpg-open package.
 # Copyright (C) 2008 Christoph Souris
 # This file is distributed under the same license as the gpg-open package.
 # Christoph Souris <christoph.souris@googlemail.com>, 2008
 
 msgid ""
-msgstr ""
+msgstr "charset=UTF-8"
 
 msgid "Error: No Armored File (File: %s)"
 msgstr "Unable to read armored file %s!"
@@ -16,7 +16,7 @@ msgid "Error: No Inputfile"
 msgstr "No input file defined!"
 
 msgid "Error: No Assignee"
-msgstr "Unable to read any encryption assignee!`"
+msgstr "Unable to read any encryption assignee!"
 
 msgid "Error: No Username"
 msgstr "Unable to parse valid username from output!"
@@ -77,6 +77,9 @@ msgstr "Unable to open temporary file!"
 
 msgid "Warning: Immediate Subprocess Finish (Seconds: %s)"
 msgstr "Process 'gnome-open' finished very quicklt (%s seconds). Maybe the target application was forked?"
+
+msgid "Error: Encryption Failure"
+msgstr "Unable to encrypt file!"
 
 msgid "Status: MD5 Hash Failure"
 msgstr "Unable to calculate MD5 hash sum!"

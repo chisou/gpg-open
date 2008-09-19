@@ -1,0 +1,100 @@
+# German messages for the gpg-open package.
+# Copyright (C) 2008 Christoph Souris
+# This file is distributed under the same license as the gpg-open package.
+# Christoph Souris <christoph.souris@googlemail.com>, 2008
+
+msgid ""
+msgstr "charset=UTF-8"
+
+msgid "Error: No Armored File (File: %s)"
+msgstr "Datei %s kann nicht gelesen werden!"
+
+msgid "Error: No User For ID (ID: %s)"
+msgstr "Für die Benutzer-ID %s kann kein Name ermittelt werden!"
+
+msgid "Error: No Inputfile"
+msgstr "Keine Datei übergeben!"
+
+msgid "Error: No Assignee"
+msgstr "Die Zielperson der Verschlüsselung konnte nicht ermittelt werden!"
+
+msgid "Error: No Username"
+msgstr "Der Benutzername konnte nicht ermittelt werden!"
+
+msgid "Error: Undefined User ID (ID: %s)"
+msgstr "Unbekannte Benutzer-ID %s!"
+
+msgid "Error: Unexpected Exception (Exception: %s)"
+msgstr "Fehler: %s"
+
+msgid "Dialog: Multiple Users Title"
+msgstr "Benutzer wählen"
+
+msgid "Dialog: Multiple Users Text"
+msgstr "Diese Datei wurde für mehrere Empfänger verschlüsselt. Bitte wählen sie welcher für die Entschlüsselung verwendet werden soll:"
+
+msgid "Dialog: Multiple Users Column Title"
+msgstr "Benutzername"
+
+msgid "Dialog: Authentication Title"
+msgstr "Authentifizierung"
+
+msgid "Dialog: Authentication Text (User: %s)"
+msgstr "Bitte geben sie das Passwort für Benutzer %s ein:"
+
+msgid "Status: Calling Command (Command: %s)"
+msgstr "Starte Unterprozess '%s' ..."
+
+msgid "Status: Command Failed (Exit Code: %s)"
+msgstr "Unterprozess beendete fehlerhaft mit Code %s!"
+
+msgid "Status: Multiple Possible Users (Users: %s)"
+msgstr "Mehrere Empfänger möglich (%s)."
+
+msgid "Status: Selected User (User: %s)"
+msgstr "Gewählter Benutzer ist %s."
+
+msgid "Status: Created Temporary Directory (Directory: %s)"
+msgstr "Temporäres Verzeichnis %s erzeugt."
+
+msgid "Status: Temporary Filename (Filename: %s)"
+msgstr "Name der temporären Datei ist %s."
+
+msgid "Error: Zenity Failure"
+msgstr "Zenity beendete mit Fehler!"
+
+msgid "Error: Decryption Failure"
+msgstr "Datei konnte nicht entschlüsselt werden!"
+
+msgid "Status: Opening Temorary File (File: %s)"
+msgstr "Temporäre Datei %s wird geöffnet ..."
+
+msgid "Status: Opening Process Failure (Exit Code: %s)"
+msgstr "Temporäre Datei konnte nicht geöffnet werden (Fehler-Code: %s)!"
+
+msgid "Status: File Opening Failure!"
+msgstr "Temporäre Datei konnte nicht geöffnet werden!"
+
+msgid "Warning: Immediate Subprocess Finish (Seconds: %s)"
+msgstr "Der Unterprozess 'gnome-open' wurde sehr schnell beendet (nach %s Sekunden). Vielleicht wurde er asynchron gestartet?"
+
+msgid "Error: Encryption Failure"
+msgstr "Datei konnte nicht verschlüsselt werden!"
+
+msgid "Status: MD5 Hash Failure"
+msgstr "MD5-Prüfsumme konnte nicht berechnet werden!"
+
+msgid "Status: Removing Temporary Data"
+msgstr "Temporäre Daten werden entfernt ..."
+
+msgid "Status: Temporary File Altered"
+msgstr "Temporäre Datei wurde geändert. Verschlüsselung wird ausgeführt ..."
+
+msgid "Status: Temporary File Unaltered"
+msgstr "Temporäre Datei ist unverändert."
+
+msgid "Error: Process Failure :"
+msgstr "Programm-Fehler:"
+
+msgid "Status: User Cancellation"
+msgstr "Abbruch durch Benutzer."

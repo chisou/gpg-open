@@ -69,6 +69,7 @@ class Status:
    OpeningProcessFailure = _("Status: Opening Process Failure (Exit Code: %s)")
    FileOpeningFailure = _("Status: File Opening Failure!")
    ImmediateSubprocessFinish = _("Warning: Immediate Subprocess Finish (Seconds: %s)")
+   EncryptionFailure = _("Error: Encryption Failure") 
    MD5HashFailure = _("Status: MD5 Hash Failure")
    RemovingTemporaryData = _("Status: Removing Temporary Data")
    TemporaryFileAltered = _("Status: Temporary File Altered")
@@ -258,7 +259,7 @@ def read_password ( userIds, usernames ):
 
    # (2) Read the password for the designated user.
    
-   command = [ "zenity", "--entry", "--hide-text", "--title", Dialog.AuthenticationTitle, "--text", Dialog.AuthenticationText ]
+   command = [ "zenity", "--entry", "--hide-text", "--title", Dialog.AuthenticationTitle, "--text", Dialog.AuthenticationText % username ]
    try:
       password = call_command( command )[0]
    except ProcessError, e:
@@ -289,7 +290,15 @@ def decrypt_file ( input_file, output_file, password ):
    try:
       call_command( [ "gpg", "--yes", "--no-tty", "--status-fd", "2", "--attribute-fd", "2", "--passphrase-fd", "0", "-o", output_file, "-d", input_file ], password )
    except ProcessError:
+      print "Something went terribly wrong"
       raise Error( Error.RuntimeException % Status.DecryptionFailure )
+
+# ======================================================================== encrypt_file
+def encrypt_file ( input_file, output_file, user_id ):
+   try:
+      call_command( [ "gpg", "--yes", "-r", user_id, "-o", output_file, "-e", input_file ] )
+   except ProcessError:
+      raise Error( Error.RuntimeException % Status.EncryptionFailure )
 
 # ======================================================================== open_file
 def open_file ( file ):
@@ -304,7 +313,11 @@ def open_file ( file ):
       print_verbose( output )
       raise Error( Error.RuntimeException % Status.FileOpeningFailure )
       
-   if t1-t0 < 345:
+   # If the opening command finished in short time (3 seconds)
+   # a warning is displayed because this can be caused from
+   # an asynchrously started application 
+   
+   if t1-t0 < 3:
       subprocess.Popen( [ "zenity", "--warning", "--text", Status.ImmediateSubprocessFinish  % str(t1-t0) ] )
 
 # ======================================================================== calc_hash
@@ -363,12 +376,12 @@ try:
       decrypt_file( input_file, temp_file, password + "\n" )
    
       hash_before = calc_hash( temp_file )
-      open( temp_file )
+      open_file( temp_file )
       hash_after = calc_hash( temp_file )
    
       if hash_before != hash_after:
          print_verbose( Status.TemporaryFileAltered ) 
-         encrypt_file( temp_file, input_file )
+         encrypt_file( temp_file, input_file, userId )
       else:
          print_verbose( Status.TemporaryFileUnaltered )
          
