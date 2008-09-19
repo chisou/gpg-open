@@ -1,0 +1,17 @@
+This package was debianized by Christoph Souris
+<christoph.souris@googlemail.com> on Mon, 02 Jun 2008 08:26:01 +0200.
+
+Upstream Author: Christoph Souris <christoph.souris@googlemail.com>
+
+Copyright: 
+
+ The Debian packaging is (C) 2008, Christoph Souris
+ <christoph.souris@googlemail.com> and is licensed under the GPL, see
+ `/usr/share/common-licenses/GPL'.
+
+License:
+
+ The software is licensed under the BSD License.
+ On Debian GNU/Linux systems, the complete text of the BSD license
+ can be found in `/usr/share/common-licenses/BSD'.
+
