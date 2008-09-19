@@ -1,0 +1,10 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=GPG Open
+Comment=Open a GPG encryped file
+Exec=gpg-open %f
+Terminal=false
+Type=Application
+Categories=Application;GTK;GNOME;
+MimeType=application/pgp-encrypted;
+
