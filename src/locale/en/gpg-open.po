@@ -18,6 +18,9 @@ msgstr "No input file defined!"
 msgid "Error: No Assignee"
 msgstr "Unable to read any encryption assignee!"
 
+msgid "Error: No Secret Assignee"
+msgstr "Unable to locate any encryption assignee you own a secret key for!"
+
 msgid "Error: No Username"
 msgstr "Unable to parse valid username from output!"
 

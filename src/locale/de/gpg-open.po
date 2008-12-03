@@ -18,6 +18,9 @@ msgstr "Keine Datei übergeben!"
 msgid "Error: No Assignee"
 msgstr "Die Zielperson der Verschlüsselung konnte nicht ermittelt werden!"
 
+msgid "Error: No Secret Assignee"
+msgstr "Es konnte keine Zielperson gefunden werden für die ein privater Schlüssel vorhanden ist!"
+
 msgid "Error: No Username"
 msgstr "Der Benutzername konnte nicht ermittelt werden!"
 

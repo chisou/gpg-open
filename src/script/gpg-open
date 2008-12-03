@@ -33,11 +33,11 @@ class Error ( Exception ):
    InvalidUserId = _("Error: No User For ID (ID: %s)")
    NoInputFile = _("Error: No Inputfile")
    NoAssignee = _("Error: No Assignee")
+   NoSecretAssignee = _("Error: No Secret Assignee")
    NoUsername = _("Error: No Username")
    UndefinedUserId = _("Error: Undefined User ID (ID: %s)")
    RuntimeException = _("Error: Unexpected Exception (Exception: %s)")
    
-
    def __init__ ( self, message ):
       self.__message = message
 
@@ -143,9 +143,9 @@ def call_command ( arguments, input=None ):
 # ------------------------------------------------------------------------
 # Read the user ID of the encryption addressees.
 # The input file is analysed using the 'gpg' command line utility and
-# parsed to resolve the ID of the encryption addressees. The result will
-# always be an array because multiple possible id are possible (though
-# unlikely). If an addressees secret key is not available he is excluded.
+# parsed to resolve the ID of the encryption addressees. The result are two
+# arrays, one containing all ID and the other one containing the ID of secret
+# keys because only these can be used for decryption. 
 # If no single user ID can be resolved an Error instance is raised.
 
 def read_userids ( filename ):
@@ -160,21 +160,41 @@ def read_userids ( filename ):
    # The user ID is located after the 'ENC_TO' token. The ID of all of
    # these lines are collected in a result array.
 
-   result = [] 
+   allIds = [] 
    for line in output:
       words = line.split()
       if words[1] == "ENC_TO":
-         result.append( words[2] )
+         allIds.append( words[2] )
 
-   # TODO: remove ID if no secret key is available
-   
-   # At least one ID should be found. If not, most likely the file is
+   # At least one 'public' ID should be found. If not, most likely the file is
    # not a valid GPG encrypted file.
- 
-   if len(result) == 0:
-      raise Error( Error.NoAssignee )
 
-   return result
+   print_verbose( "Found %s user ID." % len(allIds) )
+
+   if len(allIds) == 0:
+      raise Error( Error.NoAssignee )
+         
+   # Read/filter the secret key ID; the output of the previous command is
+   # used again to resolve this. It will look like:
+   #     [GNUPG:] NO_SECKEY <some-id>
+   # The user ID is located after the NO_SECKEY token. A line is printed for
+   # every key out of the previous resolved keys with no secret key available.
+
+   secretIds = allIds[:]
+   for line in output:
+      words = line.split()
+      if words[1] == "NO_SECKEY":
+         secretIds.remove( words[2] )
+   
+   # At least one 'secret' ID should be found. If not, the file cannot be
+   # decrypted at all.
+ 
+   print_verbose( "Found %s secret user ID." % len(secretIds) )
+
+   if len(secretIds) == 0:
+      raise Error( Error.NoSecretAssignee )
+
+   return allIds, secretIds
 
 # ------------------------------------------------------------------------
 # Resolve the username of a single user ID.
@@ -294,9 +314,12 @@ def decrypt_file ( input_file, output_file, password ):
       raise Error( Error.RuntimeException % Status.DecryptionFailure )
 
 # ======================================================================== encrypt_file
-def encrypt_file ( input_file, output_file, user_id ):
+def encrypt_file ( input_file, output_file, user_ids ):
    try:
-      call_command( [ "gpg", "--yes", "-r", user_id, "-o", output_file, "-e", input_file ] )
+      recipients = []
+      for user_id in user_ids:
+         recipients += [ "-r", user_id ]
+      call_command( [ "gpg", "--yes" ] + recipients + [ "-o", output_file, "-e", input_file ] )
    except ProcessError:
       raise Error( Error.RuntimeException % Status.EncryptionFailure )
 
@@ -366,9 +389,10 @@ try:
    
    input_file = options[0]
    
-   userIds = read_userids( input_file )
-   usernames = map( read_username, userIds )
-   userId, password = read_password( userIds, usernames )
+   allUserIds,secretUserIds = read_userids( input_file )
+   # TODO:  check_ids( allUserIds )
+   usernames = map( read_username, secretUserIds )
+   userId, password = read_password( secretUserIds, usernames )
    
    temp_dir = create_tempdir( "/dev/shm" )
    try:
@@ -381,7 +405,7 @@ try:
    
       if hash_before != hash_after:
          print_verbose( Status.TemporaryFileAltered ) 
-         encrypt_file( temp_file, input_file, userId )
+         encrypt_file( temp_file, input_file, allUserIds )
       else:
          print_verbose( Status.TemporaryFileUnaltered )
          
