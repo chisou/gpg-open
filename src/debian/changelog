@@ -1,3 +1,9 @@
+gpg-open (0.4.1-1) unstable; urgency=low
+
+  * Work around depricated GTK usage by zenity.
+
+ -- Christoph Souris <christoph.souris@googlemail.com>  Sun, 20 Dec 2009 22:07:45 +0200
+
 gpg-open (0.4-1) unstable; urgency=low
 
   * Added multi user support.
