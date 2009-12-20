@@ -119,7 +119,6 @@ def call_command ( arguments, input=None ):
 
    process = subprocess.Popen( arguments, 
          stdout=subprocess.PIPE, 
-         stderr=subprocess.STDOUT, 
          stdin=subprocess.PIPE )
    output = process.communicate( input )[0]
    
