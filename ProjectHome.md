@@ -1,0 +1,1 @@
+This is a python shell script which acts as wrapper around the 'gnome-open' command line utility to decrypt/encrypt files before opening them using the dedicated application.
